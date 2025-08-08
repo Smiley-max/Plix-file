@@ -2,42 +2,78 @@
 <html lang="da">
 <head>
 <meta charset="UTF-8" />
-<title>PNG ⇄ PLIX Konverter</title>
+<title>PNG ⇄ PLIX Konverter med Lodret Zigzag</title>
 <style>
   body {
-    background: #121212;
-    color: white;
-    font-family: monospace, monospace;
+    background: #1e1e2f;
+    color: #cce6ff;
+    font-family: 'Courier New', Courier, monospace;
     text-align: center;
-    padding: 1rem;
+    padding: 2rem;
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    margin-bottom: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
   }
   canvas {
-    border: 2px solid #0af;
+    border: 3px solid #4caf50;
     image-rendering: pixelated;
     margin: 1rem 0;
+    background: #111;
   }
   textarea {
     width: 90%;
-    height: 150px;
-    background: #222;
-    color: #0af;
+    max-width: 600px;
+    height: 180px;
+    background: #22283f;
+    color: #a8d0ff;
     font-family: monospace;
     margin-top: 1rem;
-    padding: 0.5rem;
-    border-radius: 8px;
+    padding: 1rem;
+    border-radius: 12px;
+    border: none;
+    resize: vertical;
   }
   input[type="file"] {
-    margin: 0.5rem;
+    margin: 0.7rem 0;
+    cursor: pointer;
+    color: #88c0d0;
+  }
+  button {
+    margin: 1rem 0;
+    padding: 0.7rem 1.5rem;
+    font-size: 1.1rem;
+    background-color: #4caf50;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  button:hover {
+    background-color: #43a047;
+  }
+  .footer {
+    margin-top: auto;
+    font-size: 0.8rem;
+    color: #567;
   }
 </style>
 </head>
 <body>
-  <h1>PNG ⇄ PLIX Konverter</h1>
-  
-  <label>Upload PNG:</label><br>
+
+  <h1>PNG ⇄ PLIX Konverter med Lodret Zigzag</h1>
+
+  <label for="pngInput">Upload PNG:</label><br>
   <input type="file" id="pngInput" accept="image/png"><br>
 
-  <label>Upload PLIX:</label><br>
+  <label for="plixInput">Upload PLIX:</label><br>
   <input type="file" id="plixInput" accept=".plix"><br>
 
   <canvas id="canvas" width="100" height="100"></canvas><br>
@@ -53,7 +89,9 @@
   const height = canvas.height;
   let imageData = ctx.createImageData(width, height);
 
+  // Sæt pixel i imageData
   function setPixel(x, y, r, g, b, a=255) {
+    if(x < 0 || x >= width || y < 0 || y >= height) return;
     const idx = (y * width + x) * 4;
     imageData.data[idx] = r;
     imageData.data[idx+1] = g;
@@ -61,16 +99,24 @@
     imageData.data[idx+3] = a;
   }
 
+  // Tegn imageData på canvas
   function drawImageData() {
     ctx.putImageData(imageData, 0, 0);
   }
 
+  // Helper: RGB til HEX
+  function toHex(r,g,b) {
+    return [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+  }
+
+  // PNG til PLIX konvertering med lodret zigzag
   document.getElementById('pngInput').addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
 
     const img = new Image();
     img.onload = () => {
+      // Tegn billede på canvas - skal skaleres til canvas størrelse
       ctx.clearRect(0,0,width,height);
       ctx.drawImage(img, 0, 0, width, height);
       imageData = ctx.getImageData(0, 0, width, height);
@@ -79,28 +125,28 @@
     img.src = URL.createObjectURL(file);
   });
 
+  // Konverter canvas til PLIX (.plix) med lodret zigzag
   document.getElementById('convertBtn').addEventListener('click', () => {
     let plixText = '';
-    let goingDown = true;
     let x = 0, y = 0;
+    let goingDown = true;
 
-    for (let i=0; i < width*height; i++) {
+    for (let i = 0; i < width * height; i++) {
       const idx = (y * width + x) * 4;
       const r = imageData.data[idx];
-      const g = imageData.data[idx+1];
-      const b = imageData.data[idx+2];
-      const a = imageData.data[idx+3];
+      const g = imageData.data[idx + 1];
+      const b = imageData.data[idx + 2];
+      const a = imageData.data[idx + 3];
 
       let drawtype = '*x*';
-
-      if (a === 0 || (r>240 && g>240 && b>240)) {
-        drawtype = '*x*';
+      if (a === 0 || (r > 240 && g > 240 && b > 240)) {
+        drawtype = '*x*'; // hvid
       } else {
-        if (Math.abs(r-g) < 15 && Math.abs(r-b) < 15) {
-          drawtype = '*pencil*';
+        if (Math.abs(r - g) < 15 && Math.abs(r - b) < 15) {
+          drawtype = '*pencil*'; // gråtoner
         } else {
-          const hex = toHex(r,g,b);
-          drawtype = `*marker*<[${hex}]>`;
+          const hex = toHex(r, g, b);
+          drawtype = `*marker*<[${hex}]>`; // farvet
         }
       }
 
@@ -123,12 +169,11 @@
       }
     }
 
-    // Tilføj @end til sidst
     plixText += '@end';
-
     document.getElementById('plixOutput').value = plixText;
   });
 
+  // Indlæs .plix fil og tegn på canvas med lodret zigzag
   document.getElementById('plixInput').addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
@@ -146,6 +191,9 @@
       let x = 0, y = 0;
       let goingDown = true;
 
+      // Opret nyt imageData
+      imageData = ctx.createImageData(width, height);
+
       for (let line of lines) {
         line = line.trim();
         if (!line || !line.includes('{drawtype}')) continue;
@@ -156,7 +204,7 @@
         const type = match[1];
         const hex = match[2];
 
-        let r=255, g=255, b=255;
+        let r = 255, g = 255, b = 255;
 
         if (type === 'x') {
           r = g = b = 255;
@@ -164,25 +212,25 @@
           r = g = b = 100;
         } else if (type === 'colorpencil' || type === 'marker') {
           if (hex) {
-            r = parseInt(hex.substring(0,2),16);
-            g = parseInt(hex.substring(2,4),16);
-            b = parseInt(hex.substring(4,6),16);
+            r = parseInt(hex.substring(0, 2), 16);
+            g = parseInt(hex.substring(2, 4), 16);
+            b = parseInt(hex.substring(4, 6), 16);
           }
         }
 
-        setPixel(x,y,r,g,b);
+        setPixel(x, y, r, g, b);
 
         if (goingDown) {
           y++;
           if (y >= height) {
-            y = height -1;
+            y = height - 1;
             x++;
             goingDown = false;
           }
         } else {
           y--;
           if (y < 0) {
-            y=0;
+            y = 0;
             x++;
             goingDown = true;
           }
@@ -194,10 +242,9 @@
 
     reader.readAsText(file);
   });
-
-  function toHex(r,g,b) {
-    return [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
-  }
 </script>
+
+<div class="footer">Lavd af Elliot &amp; Mr. AI – Hav det sjovt med .plix! 😊</div>
+
 </body>
 </html>
