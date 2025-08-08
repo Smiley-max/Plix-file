@@ -1,178 +1,205 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-  <meta charset="UTF-8">
-  <title>.plix Viewer ✨</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #0f0f1a;
-      color: #ffffff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem;
-    }
-
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-      background: linear-gradient(to right, #00ffd0, #00aaff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 0 0 10px #00ffd0;
-    }
-
-    input[type="file"] {
-      margin-bottom: 1rem;
-      background-color: #1a1a2f;
-      color: white;
-      padding: 0.4rem;
-      border: 1px solid #00ffaa;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: all 0.2s ease-in-out;
-    }
-
-    input[type="file"]:hover {
-      background-color: #00ffaa33;
-      box-shadow: 0 0 8px #00ffaa;
-    }
-
-    canvas {
-      margin-top: 2rem;
-      border: 4px solid #00ffaa;
-      border-radius: 10px;
-      box-shadow: 0 0 25px #00ffaa88;
-      image-rendering: pixelated;
-      transition: transform 0.2s ease-in-out;
-    }
-
-    canvas:hover {
-      transform: scale(1.03);
-    }
-
-    p {
-      font-size: 1rem;
-      margin: 0.3rem 0;
-    }
-
-    ::file-selector-button {
-      background: #00ffaa;
-      color: black;
-      border: none;
-      padding: 0.5rem 1rem;
-      margin-right: 0.5rem;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background 0.2s ease-in-out;
-    }
-
-    ::file-selector-button:hover {
-      background: #00ffcc;
-    }
-
-  </style>
+<meta charset="UTF-8" />
+<title>PNG ⇄ PLIX Konverter</title>
+<style>
+  body {
+    background: #121212;
+    color: white;
+    font-family: monospace, monospace;
+    text-align: center;
+    padding: 1rem;
+  }
+  canvas {
+    border: 2px solid #0af;
+    image-rendering: pixelated;
+    margin: 1rem 0;
+  }
+  textarea {
+    width: 90%;
+    height: 150px;
+    background: #222;
+    color: #0af;
+    font-family: monospace;
+    margin-top: 1rem;
+    padding: 0.5rem;
+    border-radius: 8px;
+  }
+  input[type="file"] {
+    margin: 0.5rem;
+  }
+</style>
 </head>
 <body>
-  <h1>.plix Viewer ✨</h1>
-
-  <p>Vælg .plix fil:</p>
-  <input type="file" id="plixInput" accept=".plix"><br>
-
-  <p>Vælg baggrund (.png) (valgfrit):</p>
+  <h1>PNG ⇄ PLIX Konverter</h1>
+  
+  <label>Upload PNG:</label><br>
   <input type="file" id="pngInput" accept="image/png"><br>
 
-  <canvas id="canvas" width="100" height="100"></canvas>
+  <label>Upload PLIX:</label><br>
+  <input type="file" id="plixInput" accept=".plix"><br>
 
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
+  <canvas id="canvas" width="100" height="100"></canvas><br>
 
-    let imageData = ctx.createImageData(width, height);
+  <button id="convertBtn">Konverter Canvas til PLIX</button><br>
 
-    function setPixel(x, y, r, g, b, a = 255) {
-      const index = (y * width + x) * 4;
-      imageData.data[index + 0] = r;
-      imageData.data[index + 1] = g;
-      imageData.data[index + 2] = b;
-      imageData.data[index + 3] = a;
+  <textarea id="plixOutput" readonly placeholder="PLIX output vises her..."></textarea>
+
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+  let imageData = ctx.createImageData(width, height);
+
+  // Sæt pixel i imageData
+  function setPixel(x, y, r, g, b, a=255) {
+    const idx = (y * width + x) * 4;
+    imageData.data[idx] = r;
+    imageData.data[idx+1] = g;
+    imageData.data[idx+2] = b;
+    imageData.data[idx+3] = a;
+  }
+
+  // Tegn imageData på canvas
+  function drawImageData() {
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  // PNG til PLIX konvertering
+  document.getElementById('pngInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const img = new Image();
+    img.onload = () => {
+      // Tegn billede på canvas med samme størrelse som canvas
+      ctx.clearRect(0,0,width,height);
+      ctx.drawImage(img, 0, 0, width, height);
+      imageData = ctx.getImageData(0, 0, width, height);
+      alert('PNG indlæst! Klik "Konverter Canvas til PLIX" for at lave .plix');
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  // Canvas til PLIX string
+  document.getElementById('convertBtn').addEventListener('click', () => {
+    let plixText = '';
+    let goingDown = true;
+    let x = 0, y = 0;
+
+    for (let i=0; i < width*height; i++) {
+      const idx = (y * width + x) * 4;
+      const r = imageData.data[idx];
+      const g = imageData.data[idx+1];
+      const b = imageData.data[idx+2];
+      const a = imageData.data[idx+3];
+
+      // Beslut drawtype ud fra farve
+      let drawtype = '*x*'; // default hvid
+
+      if (a === 0 || (r>240 && g>240 && b>240)) {
+        drawtype = '*x*';
+      } else {
+        // Gråtone tjek (simpel threshold)
+        if (Math.abs(r-g) < 15 && Math.abs(r-b) < 15) {
+          // grå pixel → pencil (grå)
+          drawtype = '*pencil*';
+        } else {
+          // farvet pixel → marker med hex
+          const hex = toHex(r,g,b);
+          drawtype = `*marker*<[${hex}]>`;
+        }
+      }
+
+      plixText += `{drawtype}=${drawtype}€€`;
+
+      // zig-zag bevægelse:
+      if (goingDown) {
+        y++;
+        if (y >= height) {
+          y = height - 1;
+          x++;
+          goingDown = false;
+        }
+      } else {
+        y--;
+        if (y < 0) {
+          y = 0;
+          x++;
+          goingDown = true;
+        }
+      }
     }
 
-    document.getElementById('pngInput').addEventListener('change', e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, width, height);
-        imageData = ctx.getImageData(0, 0, width, height); // Load base pixels
-      };
-      img.src = URL.createObjectURL(file);
-    });
+    document.getElementById('plixOutput').value = plixText;
+  });
 
-    document.getElementById('plixInput').addEventListener('change', e => {
-      const file = e.target.files[0];
-      if (!file) return;
+  // PLIX fil upload og vis
+  document.getElementById('plixInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        const lines = reader.result.split('€€');
-        let x = 0;
-        let y = 0;
-        let goingDown = true;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const lines = reader.result.split('€€');
+      let x = 0, y = 0;
+      let goingDown = true;
 
-        lines.forEach((line, i) => {
-          line = line.trim();
-          if (!line || !line.includes('{drawtype}')) return;
+      for (let line of lines) {
+        line = line.trim();
+        if (!line || !line.includes('{drawtype}')) continue;
 
-          const match = line.match(/\*([a-z]+)\*(?:<\[([0-9a-fA-F]{6})\]>)?/);
-          if (!match) return;
+        const match = line.match(/\*([a-z]+)\*(?:<\[([0-9a-fA-F]{6})\]>)?/);
+        if (!match) continue;
 
-          const type = match[1];
-          const hex = match[2];
+        const type = match[1];
+        const hex = match[2];
 
-          let r = 255, g = 255, b = 255;
+        let r=255, g=255, b=255;
 
-          if (type === 'x') {
-            r = g = b = 255;
-          } else if (type === 'pencil') {
-            r = g = b = 100;
-          } else if (type === 'colorpencil' || type === 'marker') {
-            if (hex) {
-              r = parseInt(hex.substring(0,2), 16);
-              g = parseInt(hex.substring(2,4), 16);
-              b = parseInt(hex.substring(4,6), 16);
-            }
+        if (type === 'x') {
+          r = g = b = 255;
+        } else if (type === 'pencil') {
+          r = g = b = 100;
+        } else if (type === 'colorpencil' || type === 'marker') {
+          if (hex) {
+            r = parseInt(hex.substring(0,2),16);
+            g = parseInt(hex.substring(2,4),16);
+            b = parseInt(hex.substring(4,6),16);
           }
+        }
 
-          if (x < width && y < height) {
-            setPixel(x, y, r, g, b);
+        setPixel(x,y,r,g,b);
+
+        if (goingDown) {
+          y++;
+          if (y >= height) {
+            y = height -1;
+            x++;
+            goingDown = false;
           }
-
-          if (goingDown) {
-            y++;
-            if (y >= height) {
-              y = height - 1;
-              x++;
-              goingDown = false;
-            }
-          } else {
-            y--;
-            if (y < 0) {
-              y = 0;
-              x++;
-              goingDown = true;
-            }
+        } else {
+          y--;
+          if (y < 0) {
+            y=0;
+            x++;
+            goingDown = true;
           }
-        });
+        }
+      }
 
-        ctx.putImageData(imageData, 0, 0);
-      };
+      drawImageData();
+    };
 
-      reader.readAsText(file);
-    });
-  </script>
+    reader.readAsText(file);
+  });
+
+  // Helper: RGB til HEX
+  function toHex(r,g,b) {
+    return [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+  }
+</script>
 </body>
 </html>
