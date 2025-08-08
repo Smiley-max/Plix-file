@@ -53,7 +53,6 @@
   const height = canvas.height;
   let imageData = ctx.createImageData(width, height);
 
-  // Sæt pixel i imageData
   function setPixel(x, y, r, g, b, a=255) {
     const idx = (y * width + x) * 4;
     imageData.data[idx] = r;
@@ -62,19 +61,16 @@
     imageData.data[idx+3] = a;
   }
 
-  // Tegn imageData på canvas
   function drawImageData() {
     ctx.putImageData(imageData, 0, 0);
   }
 
-  // PNG til PLIX konvertering
   document.getElementById('pngInput').addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
 
     const img = new Image();
     img.onload = () => {
-      // Tegn billede på canvas med samme størrelse som canvas
       ctx.clearRect(0,0,width,height);
       ctx.drawImage(img, 0, 0, width, height);
       imageData = ctx.getImageData(0, 0, width, height);
@@ -83,7 +79,6 @@
     img.src = URL.createObjectURL(file);
   });
 
-  // Canvas til PLIX string
   document.getElementById('convertBtn').addEventListener('click', () => {
     let plixText = '';
     let goingDown = true;
@@ -96,18 +91,14 @@
       const b = imageData.data[idx+2];
       const a = imageData.data[idx+3];
 
-      // Beslut drawtype ud fra farve
-      let drawtype = '*x*'; // default hvid
+      let drawtype = '*x*';
 
       if (a === 0 || (r>240 && g>240 && b>240)) {
         drawtype = '*x*';
       } else {
-        // Gråtone tjek (simpel threshold)
         if (Math.abs(r-g) < 15 && Math.abs(r-b) < 15) {
-          // grå pixel → pencil (grå)
           drawtype = '*pencil*';
         } else {
-          // farvet pixel → marker med hex
           const hex = toHex(r,g,b);
           drawtype = `*marker*<[${hex}]>`;
         }
@@ -115,7 +106,6 @@
 
       plixText += `{drawtype}=${drawtype}€€`;
 
-      // zig-zag bevægelse:
       if (goingDown) {
         y++;
         if (y >= height) {
@@ -133,17 +123,26 @@
       }
     }
 
+    // Tilføj @end til sidst
+    plixText += '@end';
+
     document.getElementById('plixOutput').value = plixText;
   });
 
-  // PLIX fil upload og vis
   document.getElementById('plixInput').addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = () => {
-      const lines = reader.result.split('€€');
+      const content = reader.result.trim();
+
+      if (!content.endsWith('@end')) {
+        alert('Fejl: .plix filen skal slutte med @end for at virke!');
+        return;
+      }
+
+      const lines = content.split('€€');
       let x = 0, y = 0;
       let goingDown = true;
 
@@ -196,7 +195,6 @@
     reader.readAsText(file);
   });
 
-  // Helper: RGB til HEX
   function toHex(r,g,b) {
     return [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
   }
